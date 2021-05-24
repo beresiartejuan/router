@@ -432,17 +432,6 @@ When making `HEAD` requests all output will be buffered to prevent any content t
 To achieve this, `bramus/router` but will internally re-route `HEAD` requests to their equivalent `GET` request and automatically suppress all output.
 
 
-## Unit Testing & Code Coverage
-
-`bramus/router` ships with unit tests using [PHPUnit](https://github.com/sebastianbergmann/phpunit/).
-
-- If PHPUnit is installed globally run `phpunit` to run the tests.
-
-- If PHPUnit is not installed globally, install it locally throuh composer by running `composer install --dev`. Run the tests themselves by calling `vendor/bin/phpunit`.
-
-  The included `composer.json` will also install `php-code-coverage` which allows one to generate a __Code Coverage Report__. Run `phpunit --coverage-html ./tests-report` (XDebug required), a report will be placed into the `tests-report` subfolder.
-
-
 ## Acknowledgements
 
 `bramus/router` is inspired upon [Klein](https://github.com/chriso/klein.php), [Ham](https://github.com/radiosilence/Ham), and [JREAM/route](https://bitbucket.org/JREAM/route) . Whilst Klein provides lots of features it is not object oriented. Whilst Ham is Object Oriented, it's bad at _separation of concerns_ as it also provides templating within the routing class. Whilst JREAM/route is a good starting point it is limited in what it does (only GET routes for example).
