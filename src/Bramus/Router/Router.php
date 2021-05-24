@@ -5,184 +5,92 @@
  * @copyright   Copyright (c), 2013 Bram(us) Van Damme
  * @license     MIT public license
  */
-namespace Bramus\Router;
 
-/**
- * Class Router.
- */
 class Router
 {
-    /**
-     * @var array The route patterns and their handling functions
-     */
-    private $afterRoutes = array();
 
-    /**
-     * @var array The before middleware route patterns and their handling functions
-     */
-    private $beforeRoutes = array();
+    private static $afterRoutes = array();
+    private static $beforeRoutes = array();
+    protected static $notFoundCallback;
+    private static $baseRoute = '';
+    private static $requestedMethod = '';
+    private static $serverBasePath;
+    private static $namespace = '';
 
-    /**
-     * @var object|callable The function to be executed when no route has been matched
-     */
-    protected $notFoundCallback;
-
-    /**
-     * @var string Current base route, used for (sub)route mounting
-     */
-    private $baseRoute = '';
-
-    /**
-     * @var string The Request Method that needs to be handled
-     */
-    private $requestedMethod = '';
-
-    /**
-     * @var string The Server Base Path for Router Execution
-     */
-    private $serverBasePath;
-
-    /**
-     * @var string Default Controllers Namespace
-     */
-    private $namespace = '';
-
-    /**
-     * Store a before middleware route and a handling function to be executed when accessed using one of the specified methods.
-     *
-     * @param string          $methods Allowed methods, | delimited
-     * @param string          $pattern A route pattern such as /about/system
-     * @param object|callable $fn      The handling function to be executed
-     */
-    public function before($methods, $pattern, $fn)
+    public static function before($methods, $pattern, $fn)
     {
-        $pattern = $this->baseRoute . '/' . trim($pattern, '/');
-        $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
+        $pattern = self::$baseRoute . '/' . trim($pattern, '/');
+        $pattern = self::$baseRoute ? rtrim($pattern, '/') : $pattern;
 
         foreach (explode('|', $methods) as $method) {
-            $this->beforeRoutes[$method][] = array(
+            self::$beforeRoutes[$method][] = array(
                 'pattern' => $pattern,
                 'fn' => $fn,
             );
         }
     }
 
-    /**
-     * Store a route and a handling function to be executed when accessed using one of the specified methods.
-     *
-     * @param string          $methods Allowed methods, | delimited
-     * @param string          $pattern A route pattern such as /about/system
-     * @param object|callable $fn      The handling function to be executed
-     */
-    public function match($methods, $pattern, $fn)
+    public static function match($methods, $pattern, $fn)
     {
-        $pattern = $this->baseRoute . '/' . trim($pattern, '/');
-        $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
+        $pattern = self::$baseRoute . '/' . trim($pattern, '/');
+        $pattern = self::$baseRoute ? rtrim($pattern, '/') : $pattern;
 
         foreach (explode('|', $methods) as $method) {
-            $this->afterRoutes[$method][] = array(
+            self::$afterRoutes[$method][] = array(
                 'pattern' => $pattern,
                 'fn' => $fn,
             );
         }
     }
 
-    /**
-     * Shorthand for a route accessed using any method.
-     *
-     * @param string          $pattern A route pattern such as /about/system
-     * @param object|callable $fn      The handling function to be executed
-     */
-    public function all($pattern, $fn)
+    public static function all($pattern, $fn)
     {
-        $this->match('GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD', $pattern, $fn);
+        self::match('GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD', $pattern, $fn);
     }
 
-    /**
-     * Shorthand for a route accessed using GET.
-     *
-     * @param string          $pattern A route pattern such as /about/system
-     * @param object|callable $fn      The handling function to be executed
-     */
-    public function get($pattern, $fn)
+    public static function get($pattern, $fn)
     {
-        $this->match('GET', $pattern, $fn);
+        self::match('GET', $pattern, $fn);
     }
 
-    /**
-     * Shorthand for a route accessed using POST.
-     *
-     * @param string          $pattern A route pattern such as /about/system
-     * @param object|callable $fn      The handling function to be executed
-     */
-    public function post($pattern, $fn)
+    public static function post($pattern, $fn)
     {
-        $this->match('POST', $pattern, $fn);
+        self::match('POST', $pattern, $fn);
     }
 
-    /**
-     * Shorthand for a route accessed using PATCH.
-     *
-     * @param string          $pattern A route pattern such as /about/system
-     * @param object|callable $fn      The handling function to be executed
-     */
-    public function patch($pattern, $fn)
+    public static function patch($pattern, $fn)
     {
-        $this->match('PATCH', $pattern, $fn);
+        self::match('PATCH', $pattern, $fn);
     }
 
-    /**
-     * Shorthand for a route accessed using DELETE.
-     *
-     * @param string          $pattern A route pattern such as /about/system
-     * @param object|callable $fn      The handling function to be executed
-     */
-    public function delete($pattern, $fn)
+    public static function delete($pattern, $fn)
     {
-        $this->match('DELETE', $pattern, $fn);
+        self::match('DELETE', $pattern, $fn);
     }
 
-    /**
-     * Shorthand for a route accessed using PUT.
-     *
-     * @param string          $pattern A route pattern such as /about/system
-     * @param object|callable $fn      The handling function to be executed
-     */
-    public function put($pattern, $fn)
+    public static function put($pattern, $fn)
     {
-        $this->match('PUT', $pattern, $fn);
+        self::match('PUT', $pattern, $fn);
     }
 
-    /**
-     * Shorthand for a route accessed using OPTIONS.
-     *
-     * @param string          $pattern A route pattern such as /about/system
-     * @param object|callable $fn      The handling function to be executed
-     */
-    public function options($pattern, $fn)
+    public static function options($pattern, $fn)
     {
-        $this->match('OPTIONS', $pattern, $fn);
+        self::match('OPTIONS', $pattern, $fn);
     }
 
-    /**
-     * Mounts a collection of callbacks onto a base route.
-     *
-     * @param string   $baseRoute The route sub pattern to mount the callbacks on
-     * @param callable $fn        The callback method
-     */
-    public function mount($baseRoute, $fn)
+    public static function mount($baseRoute, $fn)
     {
         // Track current base route
-        $curBaseRoute = $this->baseRoute;
+        $curBaseRoute = self::$baseRoute;
 
         // Build new base route string
-        $this->baseRoute .= $baseRoute;
+        self::$baseRoute .= $baseRoute;
 
         // Call the callable
         call_user_func($fn);
 
         // Restore original base route
-        $this->baseRoute = $curBaseRoute;
+        self::$baseRoute = $curBaseRoute;
     }
 
     /**
@@ -190,7 +98,7 @@ class Router
      *
      * @return array The request headers
      */
-    public function getRequestHeaders()
+    public static function getRequestHeaders()
     {
         $headers = array();
 
@@ -219,7 +127,7 @@ class Router
      *
      * @return string The Request method to handle
      */
-    public function getRequestMethod()
+    public static function getRequestMethod()
     {
         // Take the method as found in $_SERVER
         $method = $_SERVER['REQUEST_METHOD'];
@@ -233,7 +141,7 @@ class Router
 
         // If it's a POST request, check for a method override header
         elseif ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $headers = $this->getRequestHeaders();
+            $headers = self::getRequestHeaders();
             if (isset($headers['X-HTTP-Method-Override']) && in_array($headers['X-HTTP-Method-Override'], array('PUT', 'DELETE', 'PATCH'))) {
                 $method = $headers['X-HTTP-Method-Override'];
             }
@@ -242,54 +150,41 @@ class Router
         return $method;
     }
 
-    /**
-     * Set a Default Lookup Namespace for Callable methods.
-     *
-     * @param string $namespace A given namespace
-     */
-    public function setNamespace($namespace)
+    public static function setNamespace($namespace)
     {
         if (is_string($namespace)) {
-            $this->namespace = $namespace;
+            self::$namespace = $namespace;
         }
     }
 
-    /**
-     * Get the given Namespace before.
-     *
-     * @return string The given Namespace if exists
-     */
-    public function getNamespace()
+    public static function getNamespace()
     {
-        return $this->namespace;
+        return self::$namespace;
     }
 
     /**
      * Execute the router: Loop all defined before middleware's and routes, and execute the handling function if a match was found.
      *
-     * @param object|callable $callback Function to be executed after a matching route was handled (= after router middleware)
-     *
-     * @return bool
      */
-    public function run($callback = null)
+    public static function run($callback = null)
     {
         // Define which method we need to handle
-        $this->requestedMethod = $this->getRequestMethod();
+        self::$requestedMethod = self::getRequestMethod();
 
         // Handle all before middlewares
-        if (isset($this->beforeRoutes[$this->requestedMethod])) {
-            $this->handle($this->beforeRoutes[$this->requestedMethod]);
+        if (isset(self::$beforeRoutes[self::$requestedMethod])) {
+            self::handle(self::$beforeRoutes[self::$requestedMethod]);
         }
 
         // Handle all routes
         $numHandled = 0;
-        if (isset($this->afterRoutes[$this->requestedMethod])) {
-            $numHandled = $this->handle($this->afterRoutes[$this->requestedMethod], true);
+        if (isset(self::$afterRoutes[self::$requestedMethod])) {
+            $numHandled = self::handle(self::$afterRoutes[self::$requestedMethod], true);
         }
 
         // If no route was handled, trigger the 404 (if any)
         if ($numHandled === 0) {
-            $this->trigger404();
+            self::trigger404();
         } // If a route was handled, perform the finish callback (if any)
         else {
             if ($callback && is_callable($callback)) {
@@ -306,22 +201,18 @@ class Router
         return $numHandled !== 0;
     }
 
-    /**
-     * Set the 404 handling function.
-     *
-     * @param object|callable $fn The function to be executed
-     */
-    public function set404($fn)
+    public static function set404($fn)
     {
-        $this->notFoundCallback = $fn;
+        self::$notFoundCallback = $fn;
     }
 
     /**
      * Triggers 404 response
      */
-    public function trigger404(){
-        if ($this->notFoundCallback) {
-            $this->invoke($this->notFoundCallback);
+    public static function trigger404()
+    {
+        if (self::$notFoundCallback) {
+            self::invoke(self::$notFoundCallback);
         } else {
             header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
         }
@@ -335,13 +226,13 @@ class Router
      *
      * @return int The number of routes handled
      */
-    private function handle($routes, $quitAfterRun = false)
+    private static function handle($routes, $quitAfterRun = false)
     {
         // Counter to keep track of the number of routes we've handled
         $numHandled = 0;
 
         // The current page URL
-        $uri = $this->getCurrentUri();
+        $uri = self::getCurrentUri();
 
         // Loop all routes
         foreach ($routes as $route) {
@@ -367,7 +258,7 @@ class Router
                 }, $matches, array_keys($matches));
 
                 // Call the handling function with the URL parameters if the desired input is callable
-                $this->invoke($route['fn'], $params);
+                self::invoke($route['fn'], $params);
 
                 ++$numHandled;
 
@@ -382,7 +273,7 @@ class Router
         return $numHandled;
     }
 
-    private function invoke($fn, $params = array())
+    private static function invoke($fn, $params = array())
     {
         if (is_callable($fn)) {
             call_user_func_array($fn, $params);
@@ -394,8 +285,8 @@ class Router
             list($controller, $method) = explode('@', $fn);
 
             // Adjust controller class if namespace has been set
-            if ($this->getNamespace() !== '') {
-                $controller = $this->getNamespace() . '\\' . $controller;
+            if (self::getNamespace() !== '') {
+                $controller = self::getNamespace() . '\\' . $controller;
             }
 
             // Make sure it's callable
@@ -418,10 +309,10 @@ class Router
      *
      * @return string
      */
-    public function getCurrentUri()
+    public static function getCurrentUri()
     {
         // Get the current Request URI and remove rewrite base path from it (= allows one to run the router in a sub folder)
-        $uri = substr(rawurldecode($_SERVER['REQUEST_URI']), strlen($this->getBasePath()));
+        $uri = substr(rawurldecode($_SERVER['REQUEST_URI']), strlen(self::getBasePath()));
 
         // Don't take query params into account on the URL
         if (strstr($uri, '?')) {
@@ -437,14 +328,14 @@ class Router
      *
      * @return string
      */
-    public function getBasePath()
+    public static function getBasePath()
     {
         // Check if server base path is defined, if not define it.
-        if ($this->serverBasePath === null) {
-            $this->serverBasePath = implode('/', array_slice(explode('/', $_SERVER['SCRIPT_NAME']), 0, -1)) . '/';
+        if (self::$serverBasePath === null) {
+            self::$serverBasePath = implode('/', array_slice(explode('/', $_SERVER['SCRIPT_NAME']), 0, -1)) . '/';
         }
 
-        return $this->serverBasePath;
+        return self::$serverBasePath;
     }
 
     /**
@@ -453,8 +344,8 @@ class Router
      *
      * @param string
      */
-    public function setBasePath($serverBasePath)
+    public static function setBasePath($serverBasePath)
     {
-        $this->serverBasePath = $serverBasePath;
+        self::$serverBasePath = $serverBasePath;
     }
 }
