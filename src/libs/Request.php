@@ -5,40 +5,35 @@
  */
 class Request
 {
-    private $method;
-    private $originalMethod;
-    private $uri;
-    private $headers;
-
-    public function __construct($method, $originalMethod, $uri, array $headers = [])
-    {
-        $this->method = $method;
-        $this->originalMethod = $originalMethod;
-        $this->uri = $uri;
-        $this->headers = $headers;
+    public function __construct(
+        private readonly string $method,
+        private readonly string $originalMethod,
+        private readonly string $uri,
+        private readonly array $headers = []
+    ) {
     }
 
-    public function getMethod()
+    public function getMethod(): string
     {
         return $this->method;
     }
 
-    public function getOriginalMethod()
+    public function getOriginalMethod(): string
     {
         return $this->originalMethod;
     }
 
-    public function getUri()
+    public function getUri(): string
     {
         return $this->uri;
     }
 
-    public function getHeaders()
+    public function getHeaders(): array
     {
         return $this->headers;
     }
 
-    public function getHeader($name)
+    public function getHeader(string $name): ?string
     {
         return $this->headers[$name] ?? null;
     }

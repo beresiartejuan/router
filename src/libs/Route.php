@@ -5,21 +5,18 @@
  */
 class Route
 {
-    private $pattern;
-    private $callback;
-
-    public function __construct($pattern, $callback)
-    {
-        $this->pattern = $pattern;
-        $this->callback = $callback;
+    public function __construct(
+        private readonly string $pattern,
+        private readonly mixed $callback
+    ) {
     }
 
-    public function getPattern()
+    public function getPattern(): string
     {
         return $this->pattern;
     }
 
-    public function getCallback()
+    public function getCallback(): mixed
     {
         return $this->callback;
     }

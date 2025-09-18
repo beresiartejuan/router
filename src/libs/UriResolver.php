@@ -7,9 +7,9 @@ require_once __DIR__ . '/../interfaces/UriResolverInterface.php';
  */
 class UriResolver implements UriResolverInterface
 {
-    private $basePath;
+    private ?string $basePath = null;
 
-    public function getCurrentUri()
+    public function getCurrentUri(): string
     {
         $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
         $uri = substr(rawurldecode($requestUri), strlen($this->getBasePath()));
@@ -19,10 +19,13 @@ class UriResolver implements UriResolverInterface
             $uri = substr($uri, 0, $pos);
         }
 
+        // Normalize multiple slashes to single slashes
+        $uri = preg_replace('#/{2,}#', '/', $uri);
+
         return '/' . trim($uri, '/');
     }
 
-    public function getBasePath()
+    public function getBasePath(): string
     {
         if ($this->basePath === null) {
             $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
@@ -34,7 +37,7 @@ class UriResolver implements UriResolverInterface
         return $this->basePath;
     }
 
-    public function setBasePath($basePath)
+    public function setBasePath(string $basePath): void
     {
         $this->basePath = $basePath;
     }

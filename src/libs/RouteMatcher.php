@@ -8,13 +8,13 @@ require_once __DIR__ . '/Route.php';
  */
 class RouteMatcher implements RouteMatcherInterface
 {
-    public function matches(Route $route, $uri)
+    public function matches(Route $route, string $uri): bool
     {
         $pattern = $this->convertToRegex($route->getPattern());
-        return preg_match('#^' . $pattern . '$#', $uri);
+        return (bool) preg_match('#^' . $pattern . '$#', $uri);
     }
 
-    public function extractParameters(Route $route, $uri)
+    public function extractParameters(Route $route, string $uri): array
     {
         $pattern = $this->convertToRegex($route->getPattern());
         
@@ -37,9 +37,10 @@ class RouteMatcher implements RouteMatcherInterface
         }, $matches, array_keys($matches));
     }
 
-    private function convertToRegex($pattern)
+    private function convertToRegex(string $pattern): string
     {
         // Convert Laravel-style {param} to regex capture groups
-        return preg_replace('/\/{(.*?)}/', '/(.*?)', $pattern);
+        // Use [^/]+ to match one or more characters that are not slashes
+        return preg_replace('/\/{([^}]+)}/', '/([^/]+)', $pattern);
     }
 }

@@ -5,6 +5,6 @@
  */
 interface RouteMatcherInterface
 {
-    public function matches(Route $route, $uri);
-    public function extractParameters(Route $route, $uri);
+    public function matches(Route $route, string $uri): bool;
+    public function extractParameters(Route $route, string $uri): array;
 }

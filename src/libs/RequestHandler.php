@@ -8,7 +8,7 @@ require_once __DIR__ . '/Request.php';
  */
 class RequestHandler implements RequestHandlerInterface
 {
-    public function getCurrentRequest()
+    public function getCurrentRequest(): Request
     {
         $originalMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
         $method = $this->resolveMethod($originalMethod);
@@ -18,7 +18,7 @@ class RequestHandler implements RequestHandlerInterface
         return new Request($method, $originalMethod, $uri, $headers);
     }
 
-    public function getRequestHeaders()
+    public function getRequestHeaders(): array
     {
         $headers = [];
 
@@ -30,7 +30,7 @@ class RequestHandler implements RequestHandlerInterface
         }
 
         foreach ($_SERVER as $name => $value) {
-            if (substr($name, 0, 5) === 'HTTP_' || in_array($name, ['CONTENT_TYPE', 'CONTENT_LENGTH'])) {
+            if (strpos($name, 'HTTP_') === 0 || in_array($name, ['CONTENT_TYPE', 'CONTENT_LENGTH'])) {
                 $headerName = str_replace(
                     [' ', 'Http'], 
                     ['-', 'HTTP'], 
@@ -43,7 +43,7 @@ class RequestHandler implements RequestHandlerInterface
         return $headers;
     }
 
-    private function resolveMethod($originalMethod)
+    private function resolveMethod(string $originalMethod): string
     {
         if ($originalMethod === 'HEAD') {
             ob_start();

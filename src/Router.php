@@ -16,31 +16,29 @@ require_once __DIR__ . '/libs/RouteMatcher.php';
  */
 class Router
 {
-    private $routes = [];
-    private $beforeMiddleware = [];
-    private $notFoundCallback;
-    private $baseRoute = '';
-    private $namespace = '';
-    private $requestHandler;
-    private $uriResolver;
-    private $routeMatcher;
+    private array $routes = [];
+    private array $beforeMiddleware = [];
+    private mixed $notFoundCallback = null;
+    private string $baseRoute = '';
+    private string $namespace = '';
+    private RequestHandlerInterface $requestHandler;
+    private UriResolverInterface $uriResolver;
+    private RouteMatcherInterface $routeMatcher;
 
     public function __construct(
-        RequestHandlerInterface $requestHandler = null,
-        UriResolverInterface $uriResolver = null,
-        RouteMatcherInterface $routeMatcher = null
+        ?RequestHandlerInterface $requestHandler = null,
+        ?UriResolverInterface $uriResolver = null,
+        ?RouteMatcherInterface $routeMatcher = null
     ) {
-        $this->requestHandler = $requestHandler ?: new RequestHandler();
-        $this->uriResolver = $uriResolver ?: new UriResolver();
-        $this->routeMatcher = $routeMatcher ?: new RouteMatcher();
+        $this->requestHandler = $requestHandler ?? new RequestHandler();
+        $this->uriResolver = $uriResolver ?? new UriResolver();
+        $this->routeMatcher = $routeMatcher ?? new RouteMatcher();
     }
 
     /**
      * Create a new Router instance with default dependencies
-     * 
-     * @return Router
      */
-    public static function create()
+    public static function create(): Router
     {
         return new self();
     }
@@ -48,7 +46,7 @@ class Router
     /**
      * Add middleware to be executed before routes
      */
-    public function before($methods, $pattern, $callback)
+    public function before(string|array $methods, string $pattern, mixed $callback): static
     {
         $pattern = $this->normalizePattern($pattern);
         $methods = $this->normalizeMethods($methods);
@@ -63,7 +61,7 @@ class Router
     /**
      * Register a route
      */
-    public function match($methods, $pattern, $callback)
+    public function match(string|array $methods, string $pattern, mixed $callback): static
     {
         $pattern = $this->normalizePattern($pattern);
         $methods = $this->normalizeMethods($methods);
@@ -78,7 +76,7 @@ class Router
     /**
      * Register a GET route
      */
-    public function get($pattern, $callback)
+    public function get(string $pattern, mixed $callback): static
     {
         return $this->match('GET', $pattern, $callback);
     }
@@ -86,7 +84,7 @@ class Router
     /**
      * Register a POST route
      */
-    public function post($pattern, $callback)
+    public function post(string $pattern, mixed $callback): static
     {
         return $this->match('POST', $pattern, $callback);
     }
@@ -94,7 +92,7 @@ class Router
     /**
      * Register a PUT route
      */
-    public function put($pattern, $callback)
+    public function put(string $pattern, mixed $callback): static
     {
         return $this->match('PUT', $pattern, $callback);
     }
@@ -102,7 +100,7 @@ class Router
     /**
      * Register a DELETE route
      */
-    public function delete($pattern, $callback)
+    public function delete(string $pattern, mixed $callback): static
     {
         return $this->match('DELETE', $pattern, $callback);
     }
@@ -110,7 +108,7 @@ class Router
     /**
      * Register a PATCH route
      */
-    public function patch($pattern, $callback)
+    public function patch(string $pattern, mixed $callback): static
     {
         return $this->match('PATCH', $pattern, $callback);
     }
@@ -118,7 +116,7 @@ class Router
     /**
      * Register an OPTIONS route
      */
-    public function options($pattern, $callback)
+    public function options(string $pattern, mixed $callback): static
     {
         return $this->match('OPTIONS', $pattern, $callback);
     }
@@ -126,7 +124,7 @@ class Router
     /**
      * Register a route for all HTTP methods
      */
-    public function all($pattern, $callback)
+    public function all(string $pattern, mixed $callback): static
     {
         return $this->match('GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD', $pattern, $callback);
     }
@@ -134,7 +132,7 @@ class Router
     /**
      * Mount a group of routes with a base path
      */
-    public function mount($baseRoute, callable $callback)
+    public function mount(string $baseRoute, callable $callback): static
     {
         $originalBaseRoute = $this->baseRoute;
         $this->baseRoute .= $baseRoute;
@@ -149,19 +147,16 @@ class Router
     /**
      * Set the namespace for controller resolution
      */
-    public function setNamespace($namespace)
+    public function setNamespace(string $namespace): static
     {
-        if (is_string($namespace)) {
-            $this->namespace = $namespace;
-        }
-
+        $this->namespace = $namespace;
         return $this;
     }
 
     /**
      * Get the current namespace
      */
-    public function getNamespace()
+    public function getNamespace(): string
     {
         return $this->namespace;
     }
@@ -169,7 +164,7 @@ class Router
     /**
      * Set the 404 not found callback
      */
-    public function set404($callback)
+    public function set404(mixed $callback): static
     {
         $this->notFoundCallback = $callback;
         return $this;
@@ -178,7 +173,7 @@ class Router
     /**
      * Execute the router
      */
-    public function run(callable $finishCallback = null)
+    public function run(?callable $finishCallback = null): bool
     {
         $request = $this->requestHandler->getCurrentRequest();
         $uri = $this->uriResolver->getCurrentUri();
@@ -206,7 +201,7 @@ class Router
     /**
      * Get all registered routes (for testing)
      */
-    public function getRoutes()
+    public function getRoutes(): array
     {
         return $this->routes;
     }
@@ -214,7 +209,7 @@ class Router
     /**
      * Get all middleware (for testing)
      */
-    public function getMiddleware()
+    public function getMiddleware(): array
     {
         return $this->beforeMiddleware;
     }
@@ -222,7 +217,7 @@ class Router
     /**
      * Execute before middleware for given method
      */
-    private function executeMiddleware($method)
+    private function executeMiddleware(string $method): void
     {
         if (!isset($this->beforeMiddleware[$method])) {
             return;
@@ -241,7 +236,7 @@ class Router
     /**
      * Handle routes for given method and URI
      */
-    private function handleRoutes($method, $uri)
+    private function handleRoutes(string $method, string $uri): bool
     {
         if (!isset($this->routes[$method])) {
             return false;
@@ -261,7 +256,7 @@ class Router
     /**
      * Invoke a callback with parameters
      */
-    private function invokeCallback($callback, array $params = [])
+    private function invokeCallback(mixed $callback, array $params = []): void
     {
         if (is_callable($callback)) {
             call_user_func_array($callback, $params);
@@ -269,7 +264,7 @@ class Router
         }
 
         if (is_string($callback) && strpos($callback, '@') !== false) {
-            list($controller, $method) = explode('@', $callback);
+            [$controller, $method] = explode('@', $callback, 2);
 
             if ($this->namespace) {
                 $controller = $this->namespace . '\\' . $controller;
@@ -291,7 +286,7 @@ class Router
     /**
      * Trigger 404 not found
      */
-    private function trigger404()
+    private function trigger404(): void
     {
         if ($this->notFoundCallback) {
             $this->invokeCallback($this->notFoundCallback);
@@ -304,7 +299,7 @@ class Router
     /**
      * Normalize route pattern
      */
-    private function normalizePattern($pattern)
+    private function normalizePattern(string $pattern): string
     {
         $pattern = $this->baseRoute . '/' . trim($pattern, '/');
         return $this->baseRoute ? rtrim($pattern, '/') : $pattern;
@@ -313,8 +308,11 @@ class Router
     /**
      * Normalize HTTP methods
      */
-    private function normalizeMethods($methods)
+    private function normalizeMethods(string|array $methods): array
     {
+        if (is_array($methods)) {
+            return array_map('strtoupper', $methods);
+        }
         return array_map('strtoupper', explode('|', $methods));
     }
 }

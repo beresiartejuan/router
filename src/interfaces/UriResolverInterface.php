@@ -5,6 +5,6 @@
  */
 interface UriResolverInterface
 {
-    public function getCurrentUri();
-    public function getBasePath();
+    public function getCurrentUri(): string;
+    public function getBasePath(): string;
 }

@@ -5,6 +5,6 @@
  */
 interface RequestHandlerInterface
 {
-    public function getCurrentRequest();
-    public function getRequestHeaders();
+    public function getCurrentRequest(): Request;
+    public function getRequestHeaders(): array;
 }
