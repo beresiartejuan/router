@@ -1,443 +1,589 @@
-# bramus/router
+# Router - Librería PHP de Enrutamiento
 
-[![Build Status](https://img.shields.io/travis/bramus/router.svg?style=flat-square)](http://travis-ci.org/bramus/router) [![Source](http://img.shields.io/badge/source-bramus/router-blue.svg?style=flat-square)](https://github.com/bramus/router) [![Version](https://img.shields.io/packagist/v/bramus/router.svg?style=flat-square)](https://packagist.org/packages/bramus/router) [![Downloads](https://img.shields.io/packagist/dt/bramus/router.svg?style=flat-square)](https://packagist.org/packages/bramus/router/stats) [![License](https://img.shields.io/packagist/l/bramus/router.svg?style=flat-square)](https://github.com/bramus/router/blob/master/LICENSE)
+Esta es una librería PHP de enrutamiento independiente, basada originalmente en [bramus/router](https://github.com/bramus/router) de Bram(us) Van Damme.
 
-A lightweight and simple object oriented PHP Router.
-Built by Bram(us) Van Damme _([https://www.bram.us](https://www.bram.us))_ and [Contributors](https://github.com/bramus/router/graphs/contributors)
+## Reconocimiento
 
+Esta librería está inspirada y basada en el excelente trabajo de **Bram(us) Van Damme** en su librería [bramus/router](https://github.com/bramus/router).
 
-## Features
+## Instalación
 
-- Supports `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`, `PATCH` and `HEAD` request methods
-- [Routing shorthands such as `get()`, `post()`, `put()`, …](#routing-shorthands)
-- [Static Route Patterns](#route-patterns)
-- Dynamic Route Patterns: [Dynamic PCRE-based Route Patterns](#dynamic-pcre-based-route-patterns) or [Dynamic Placeholder-based Route Patterns](#dynamic-placeholder-based-route-patterns)
-- [Optional Route Subpatterns](#optional-route-subpatterns)
-- [Supports `X-HTTP-Method-Override` header](#overriding-the-request-method)
-- [Subrouting / Mounting Routes](#subrouting--mounting-routes)
-- [Allowance of `Class@Method` calls](#classmethod-calls)
-- [Custom 404 handling](#custom-404)
-- [Before Route Middlewares](#before-route-middlewares)
-- [Before Router Middlewares / Before App Middlewares](#before-router-middlewares)
-- [After Router Middleware / After App Middleware (Finish Callback)](#after-router-middleware--run-callback)
-- [Works fine in subfolders](#subfolder-support)
+### Via Composer
 
-
-
-## Prerequisites/Requirements
-
-- PHP 5.3 or greater
-- [URL Rewriting](https://gist.github.com/bramus/5332525)
-
-
-
-## Installation
-
-Installation is possible using Composer
-
-```
-composer require bramus/router ~1.5
+```bash
+composer require beresiartejuan/router
 ```
 
+## Métodos Principales
 
-
-## Demo
-
-A demo is included in the `demo` subfolder. Serve it using your favorite web server, or using PHP 5.4+'s built-in server by executing `php -S localhost:8080` on the shell. A `.htaccess` for use with Apache is included.
-
-Additionally a demo of a mutilingual router is also included. This can be found in the `demo-multilang` subfolder and can be ran in the same manner as the normal demo.
-
-## Usage
-
-Create an instance of `\Bramus\Router\Router`, define some routes onto it, and run it.
+### Creación del Router
 
 ```php
-// Require composer autoloader
-require __DIR__ . '/vendor/autoload.php';
+// Crear una nueva instancia con dependencias por defecto
+$router = Router::create();
 
-// Define routes
-// ...
-
-// Run it!
-Router::run();
+// O crear con dependencias personalizadas (para casos avanzados)
+$router = new Router($requestHandler, $uriResolver, $routeMatcher);
 ```
 
+### Registro de Rutas por Método HTTP
 
-### Routing
-
-Hook __routes__ (a combination of one or more HTTP methods and a pattern) using `Router::match(method(s), pattern, function)`:
-
-```php
-Router::match('GET|POST', 'pattern', function() { … });
-```
-
-`bramus/router` supports `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD` _(see [note](#a-note-on-making-head-requests))_, and `OPTIONS` HTTP request methods. Pass in a single request method, or multiple request methods separated by `|`.
-
-When a route matches against the current URL (e.g. `$_SERVER['REQUEST_URI']`), the attached __route handling function__ will be executed. The route handling function must be a [callable](http://php.net/manual/en/language.types.callable.php). Only the first route matched will be handled. When no matching route is found, a 404 handler will be executed.
-
-### Routing Shorthands
-
-Shorthands for single request methods are provided:
+#### Métodos HTTP Individuales
 
 ```php
-Router::get('pattern', function() { /* ... */ });
-Router::post('pattern', function() { /* ... */ });
-Router::put('pattern', function() { /* ... */ });
-Router::delete('pattern', function() { /* ... */ });
-Router::options('pattern', function() { /* ... */ });
-Router::patch('pattern', function() { /* ... */ });
-```
+// GET - para obtener datos
+$router->get('/users', function() {
+    // Listar usuarios
+});
 
-You can use this shorthand for a route that can be accessed using any method:
+// POST - para crear nuevos recursos
+$router->post('/users', function() {
+    // Crear nuevo usuario
+});
 
-```php
-Router::all('pattern', function() { … });
-```
+// PUT - para actualizar recursos completos
+$router->put('/users/{id}', function($id) {
+    // Actualizar usuario completo
+});
 
-Note: Routes must be hooked before `Router::run();` is being called.
+// PATCH - para actualizaciones parciales
+$router->patch('/users/{id}', function($id) {
+    // Actualizar campos específicos del usuario
+});
 
-Note: There is no shorthand for `match()` as `bramus/router` will internally re-route such requrests to their equivalent `GET` request, in order to comply with RFC2616 _(see [note](#a-note-on-making-head-requests))_.
+// DELETE - para eliminar recursos
+$router->delete('/users/{id}', function($id) {
+    // Eliminar usuario
+});
 
-### Route Patterns
-
-Route Patterns can be static or dynamic:
-
-- __Static Route Patterns__ contain no dynamic parts and must match exactly against the `path` part of the current URL.
-- __Dynamic Route Patterns__ contain dynamic parts that can vary per request. The varying parts are named __subpatterns__ and are defined using either Perl-compatible regular expressions (PCRE) or by using __placeholders__
-
-#### Static Route Patterns
-
-A static route pattern is a regular string representing a URI. It will be compared directly against the `path` part of the current URL.
-
-Examples:
-
--  `/about`
--  `/contact`
-
-Usage Examples:
-
-```php
-// This route handling function will only be executed when visiting http(s)://www.example.org/about
-Router::get('/about', function() {
-    echo 'About Page Contents';
+// OPTIONS - para información sobre métodos permitidos
+$router->options('/users', function() {
+    // Retornar métodos HTTP permitidos
 });
 ```
 
-#### Dynamic PCRE-based Route Patterns
-
-This type of Route Patterns contain dynamic parts which can vary per request. The varying parts are named __subpatterns__ and are defined using regular expressions.
-
-Examples:
-
-- `/movies/(\d+)`
-- `/profile/(\w+)`
-
-Commonly used PCRE-based subpatterns within Dynamic Route Patterns are:
-
-- `\d+` = One or more digits (0-9)
-- `\w+` = One or more word characters (a-z 0-9 _)
-- `[a-z0-9_-]+` = One or more word characters (a-z 0-9 _) and the dash (-)
-- `.*` = Any character (including `/`), zero or more
-- `[^/]+` = Any character but `/`, one or more
-
-Note: The [PHP PCRE Cheat Sheet](https://www.cs.washington.edu/education/courses/190m/12sp/cheat-sheets/php-regex-cheat-sheet.pdf) might come in handy.
-
-The __subpatterns__ defined in Dynamic PCRE-based Route Patterns are converted to parameters which are passed into the route handling function. Prerequisite is that these subpatterns need to be defined as __parenthesized subpatterns__, which means that they should be wrapped between parens:
+#### Múltiples Métodos HTTP
 
 ```php
-// Bad
-Router::get('/hello/\w+', function($name) {
-    echo 'Hello ' . htmlentities($name);
+// Registrar la misma ruta para múltiples métodos
+$router->match('GET|POST', '/form', function() {
+    // Manejar tanto GET como POST
 });
 
-// Good
-Router::get('/hello/(\w+)', function($name) {
-    echo 'Hello ' . htmlentities($name);
+// Registrar para todos los métodos HTTP
+$router->all('/api/status', function() {
+    // Responder a cualquier método HTTP
 });
 ```
 
-Note: The leading `/` at the very beginning of a route pattern is not mandatory, but is recommended.
+### Montaje de Rutas (Subrutas)
 
-When multiple subpatterns are defined, the resulting __route handling parameters__ are passed into the route handling function in the order they are defined in:
-
-```php
-Router::get('/movies/(\d+)/photos/(\d+)', function($movieId, $photoId) {
-    echo 'Movie #' . $movieId . ', photo #' . $photoId;
-});
-```
-
-#### Dynamic Placeholder-based Route Patterns
-
-This type of Route Patterns are the same as __Dynamic PCRE-based Route Patterns__, but with one difference: they don't use regexes to do the pattern matching but they use the more easy __placeholders__ instead. Placeholders are strings surrounded by curly braces, e.g. `{name}`. You don't need to add parens around placeholders.
-
-Examples:
-
-- `/movies/{id}`
-- `/profile/{username}`
-
-Placeholders are easier to use than PRCEs, but offer you less control as they internally get translated to a PRCE that matches any character (`.*`).
+El montaje te permite agrupar rutas bajo un prefijo común:
 
 ```php
-Router::get('/movies/{movieId}/photos/{photoId}', function($movieId, $photoId) {
-    echo 'Movie #' . $movieId . ', photo #' . $photoId;
-});
-```
+// Montar todas las rutas de API bajo /api
+$router->mount('/api', function() use ($router) {
 
-Note: the name of the placeholder does not need to match with the name of the parameter that is passed into the route handling function:
+    // Estas rutas tendrán el prefijo /api
 
-```php
-Router::get('/movies/{foo}/photos/{bar}', function($movieId, $photoId) {
-    echo 'Movie #' . $movieId . ', photo #' . $photoId;
-});
-```
-
-
-### Optional Route Subpatterns
-
-Route subpatterns can be made optional by making the subpatterns optional by adding a `?` after them. Think of blog URLs in the form of `/blog(/year)(/month)(/day)(/slug)`:
-
-```php
-Router::get(
-    '/blog(/\d+)?(/\d+)?(/\d+)?(/[a-z0-9_-]+)?',
-    function($year = null, $month = null, $day = null, $slug = null) {
-        if (!$year) { echo 'Blog overview'; return; }
-        if (!$month) { echo 'Blog year overview'; return; }
-        if (!$day) { echo 'Blog month overview'; return; }
-        if (!$slug) { echo 'Blog day overview'; return; }
-        echo 'Blogpost ' . htmlentities($slug) . ' detail';
-    }
-);
-```
-
-The code snippet above responds to the URLs `/blog`, `/blog/year`, `/blog/year/month`, `/blog/year/month/day`, and `/blog/year/month/day/slug`.
-
-Note: With optional parameters it is important that the leading `/` of the subpatterns is put inside the subpattern itself. Don't forget to set default values for the optional parameters.
-
-The code snipped above unfortunately also responds to URLs like `/blog/foo` and states that the overview needs to be shown - which is incorrect. Optional subpatterns can be made successive by extending the parenthesized subpatterns so that they contain the other optional subpatterns: The pattern should resemble `/blog(/year(/month(/day(/slug))))` instead of the previous `/blog(/year)(/month)(/day)(/slug)`:
-
-```php
-Router::get('/blog(/\d+(/\d+(/\d+(/[a-z0-9_-]+)?)?)?)?', function($year = null, $month = null, $day = null, $slug = null) {
-    // ...
-});
-```
-
-Note: It is highly recommended to __always__ define successive optional parameters.
-
-To make things complete use [quantifiers](http://www.php.net/manual/en/regexp.reference.repetition.php) to require the correct amount of numbers in the URL:
-
-```php
-Router::get('/blog(/\d{4}(/\d{2}(/\d{2}(/[a-z0-9_-]+)?)?)?)?', function($year = null, $month = null, $day = null, $slug = null) {
-    // ...
-});
-```
-
-
-### Subrouting / Mounting Routes
-
-Use `$router->mount($baseroute, $fn)` to mount a collection of routes onto a subroute pattern. The subroute pattern is prefixed onto all following routes defined in the scope. e.g. Mounting a callback `$fn` onto `/movies` will prefix `/movies` onto all following routes.
-
-```php
-Router::mount('/movies', function() {
-
-    // will result in '/movies/'
-    Router::get('/', function() {
-        echo 'movies overview';
+    // GET /api/users
+    $router->get('/users', function() {
+        echo json_encode(['users' => []]);
     });
 
-    // will result in '/movies/id'
-    Router::get('/(\d+)', function($id) {
-        echo 'movie id ' . htmlentities($id);
+    // GET /api/users/{id}
+    $router->get('/users/{id}', function($id) {
+        echo json_encode(['user' => ['id' => $id]]);
     });
 
+    // POST /api/users
+    $router->post('/users', function() {
+        echo json_encode(['message' => 'Usuario creado']);
+    });
+});
+
+// Montaje de rutas administrativas
+$router->mount('/admin', function() use ($router) {
+
+    // GET /admin/dashboard
+    $router->get('/dashboard', function() {
+        echo 'Panel de administración';
+    });
+
+    // Submontaje anidado: /admin/users/*
+    $router->mount('/users', function() use ($router) {
+
+        // GET /admin/users/
+        $router->get('/', function() {
+            echo 'Lista de usuarios admin';
+        });
+
+        // GET /admin/users/{id}/edit
+        $router->get('/{id}/edit', function($id) {
+            echo "Editar usuario $id";
+        });
+    });
 });
 ```
 
-Nesting of subroutes is possible, just define a second `Router::mount()` in the callable that's already contained within a preceding `Router::mount()`.
+### Middleware (Funciones Intermedias)
 
+#### Before Middleware
 
-### `Class@Method` calls
-
-We can route to the class action like so:
-
-```php
-Router::get('/(\d+)', '\App\Controllers\User@showProfile');
-```
-
-When a request matches the specified route URI, the `showProfile` method on the `User` class will be executed. The defined route parameters will be passed to the class method.
-
-The method can be static (recommended) or non-static (not-recommended). In case of a non-static method, a new instance of the class will be created.
-
-If most/all of your handling classes are in one and the same namespace, you can set the default namespace to use on your router instance via `setNamespace()`
+Ejecuta código antes de que se procese la ruta:
 
 ```php
-Router::setNamespace('\App\Controllers');
-Router::get('/users/(\d+)', 'User@showProfile');
-Router::get('/cars/(\d+)', 'Car@showProfile');
-```
-
-### Custom 404
-
-The default 404 handler sets a 404 status code and exits. You can override this default 404 handler by using `$router->set404(callable);`
-
-```php
-Router::set404(function() {
-    header('HTTP/1.1 404 Not Found');
-    // ... do something special here
-});
-```
-
-Also supported are `Class@Method` callables:
-
-```php
-Router::set404('\App\Controllers\Error@notFound');
-```
-
-The 404 handler will be executed when no route pattern was matched to the current URL.
-
-💡 You can also manually trigger the 404 handler by calling `$router->trigger404()`
-
-```php
-Router::get('/([a-z0-9-]+)', function($id) {
-    if (!Posts::exists($id)) {
-        Router::trigger404();
-        return;
+// Middleware para todas las rutas de admin
+$router->before('GET|POST', '/admin/.*', function() {
+    // Verificar autenticación
+    if (!isset($_SESSION['admin'])) {
+        header('Location: /login');
+        exit();
     }
-
-    // …
 });
-```
 
-
-### Before Route Middlewares
-
-`bramus/router` supports __Before Route Middlewares__, which are executed before the route handling is processed.
-
-Like route handling functions, you hook a handling function to a combination of one or more HTTP request methods and a specific route pattern.
-
-```php
-Router::before('GET|POST', '/admin/.*', function() {
-    if (!isset($_SESSION['user'])) {
-        header('location: /auth/login');
+// Middleware para rutas específicas
+$router->before('POST', '/api/.*', function() {
+    // Verificar token API
+    $token = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (!validateApiToken($token)) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Token inválido']);
         exit();
     }
 });
 ```
 
-Unlike route handling functions, more than one before route middleware is executed when more than one route match is found.
+### Manejo de Errores
 
-
-### Before Router Middlewares
-
-Before route middlewares are route specific. Using a general route pattern (viz. _all URLs_), they can become __Before Router Middlewares__ _(in other projects sometimes referred to as before app middlewares)_ which are always executed, no matter what the requested URL is.
+#### Página 404 Personalizada
 
 ```php
-Router::before('GET', '/.*', function() {
-    // ... this will always be executed
+$router->set404(function() {
+    http_response_code(404);
+    echo '<h1>Página no encontrada</h1>';
+    echo '<p>La página que buscas no existe.</p>';
+});
+
+// O usando una clase controladora
+$router->set404('ErrorController@notFound');
+```
+
+#### Disparar 404 Manualmente
+
+```php
+$router->get('/posts/{id}', function($id) {
+    $post = getPost($id);
+
+    if (!$post) {
+        // Disparar el manejador 404
+        $router->trigger404();
+        return;
+    }
+
+    echo "Post: " . $post['title'];
 });
 ```
 
-
-### After Router Middleware / Run Callback
-
-Run one (1) middleware function, name the __After Router Middleware__ _(in other projects sometimes referred to as after app middlewares)_ after the routing was processed. Just pass it along the `Router::run()` function. The run callback is route independent.
+### Ejecución del Router
 
 ```php
-Router::run(function() { … });
-```
+// Ejecutar el router (procesar la solicitud actual)
+$router->run();
 
-Note: If the route handling function has `exit()`ed the run callback won't be run.
-
-
-### Overriding the request method
-
-Use `X-HTTP-Method-Override` to override the HTTP Request Method. Only works when the original Request Method is `POST`. Allowed values for `X-HTTP-Method-Override` are `PUT`, `DELETE`, or `PATCH`.
-
-
-### Subfolder support
-
-Out-of-the box `bramus/router` will run in any (sub)folder you place it into … no adjustments to your code are needed. You can freely move your _entry script_ `index.php` around, and the router will automatically adapt itself to work relatively from the current folder's path by mounting all routes onto that __basePath__.
-
-Say you have a server hosting the domain `www.example.org` using `public_html/` as its document root, with this little _entry script_ `index.php`:
-
-```php
-Router::get('/', function() { echo 'Index'; });
-Router::get('/hello', function() { echo 'Hello!'; });
-```
-
-- If your were to place this file _(along with its accompanying `.htaccess` file or the like)_ at the document root level (e.g. `public_html/index.php`), `bramus/router` will mount all routes onto the domain root (e.g. `/`) and thus respond to `https://www.example.org/` and `https://www.example.org/hello`.
-
-- If you were to move this file _(along with its accompanying `.htaccess` file or the like)_ into a subfolder (e.g. `public_html/demo/index.php`), `bramus/router` will mount all routes onto the current path (e.g. `/demo`) and thus repsond to `https://www.example.org/demo` and `https://www.example.org/demo/hello`. There's **no** need for `Router::mount(…)` in this case.
-
-#### Disabling subfolder support
-
-In case you **don't** want `bramus/router` to automatically adapt itself to the folder its being placed in, it's possible to manually override the _basePath_ by calling `setBasePath()`. This is necessary in the _(uncommon)_ situation where your _entry script_ and your _entry URLs_ are not tightly coupled _(e.g. when the entry script is placed into a subfolder that does not need be part of the URLs it responds to)_.
-
-```php
-// Override auto base path detection
-Router::setBasePath('/');
-
-Router::get('/', function() { echo 'Index'; });
-Router::get('/hello', function() { echo 'Hello!'; });
-
-Router::run();
-```
-
-If you were to place this file into a subfolder (e.g. `public_html/some/sub/folder/index.php`), it will still mount the routes onto the domain root (e.g. `/`) and thus respond to `https://www.example.org/` and `https://www.example.org/hello` _(given that your `.htaccess` file – placed at the document root level – rewrites requests to it)_
-
-## Integration with other libraries
-
-Integrate other libraries with `bramus/router` by making good use of the `use` keyword to pass dependencies into the handling functions.
-
-```php
-$tpl = new \Acme\Template\Template();
-
-Router::get('/', function() use ($tpl) {
-    $tpl->load('home.tpl');
-    $tpl->setdata(array(
-        'name' => 'Bramus!'
-    ));
-});
-
-Router::run(function() use ($tpl) {
-    $tpl->display();
+// Ejecutar con callback final
+$router->run(function() {
+    // Este código se ejecuta después de procesar la ruta
+    echo "
+<!-- Procesado por mi router -->";
 });
 ```
 
-Given this structure it is still possible to manipulate the output from within the After Router Middleware
+### Configuración Adicional
 
-
-## A note on working with PUT
-
-There's no such thing as `$_PUT` in PHP. One must fake it:
+#### Establecer Namespace Base
 
 ```php
-Router::put('/movies/(\d+)', function($id) {
+$router->setNamespace('Appontrollers');
 
-    // Fake $_PUT
-    $_PUT  = array();
-    parse_str(file_get_contents('php://input'), $_PUT);
+// Ahora puedes usar nombres cortos de clases
+$router->get('/users', 'UserController@index');
+// Equivale a: 'AppontrollersserController@index'
+```
 
-    // ...
+#### Establecer Ruta Base
 
+```php
+// Útil si tu aplicación está en un subdirectorio
+$router->setBasePath('/mi-app');
+```
+
+## Uso Básico
+
+```php
+require_once 'vendor/autoload.php';
+
+use Router\Router;
+
+// Crear router
+$router = Router::create();
+
+// Registrar rutas
+$router->get('/users/{id}', function($id) {
+    echo "Usuario: $id";
+});
+
+$router->post('/users', 'UserController@create');
+
+// Ejecutar
+$router->run();
+```
+
+## Estructura de la Librería
+
+```
+src/
+├── Router.php                      # 🎯 Clase principal del router
+├── interfaces/                     # 🔌 Interfaces del sistema
+│   ├── RequestHandlerInterface.php
+│   ├── UriResolverInterface.php
+│   └── RouteMatcherInterface.php
+├── libs/                          # 📚 Clases principales del sistema
+│   ├── Route.php                  # Representación de una ruta
+│   ├── Request.php                # Representación de una petición HTTP
+│   ├── RequestHandler.php         # Manejo de peticiones HTTP
+│   ├── UriResolver.php           # Resolución de URIs
+│   └── RouteMatcher.php          # Matching de patrones de ruta
+└── helpers/                       # 🛠️ Clases auxiliares
+    └── RouterFactory.php          # Factory para crear instancias
+```
+
+## Características Principales
+
+### ✅ **Arquitectura Modular**
+
+- Separación clara de responsabilidades
+- Interfaces bien definidas
+- Inyección de dependencias
+
+### ✅ **Fácil Testing**
+
+- Dependencias inyectables
+- Mocks disponibles
+- Métodos públicos para inspección
+
+### ✅ **Flexible y Extensible**
+
+- Intercambio fácil de componentes
+- Configuración personalizable
+- Soporte para diferentes entornos
+
+### ✅ **PSR Compatible**
+
+- Autoloading PSR-4
+- Namespaces consistentes
+- Estándares modernos de PHP
+
+## Ejemplo Avanzado
+
+```php
+use Router\Router;
+use Router\Libs\RequestHandler;
+use Router\Libs\UriResolver;
+use Router\Libs\RouteMatcher;
+
+// Crear router con dependencias personalizadas
+$requestHandler = new RequestHandler();
+$uriResolver = new UriResolver();
+$routeMatcher = new RouteMatcher();
+
+$router = new Router($requestHandler, $uriResolver, $routeMatcher);
+
+// Registrar rutas con parámetros
+$router->get('/api/users/{id}/posts/{postId}', function($id, $postId) {
+    return json_encode([
+        'user_id' => $id,
+        'post_id' => $postId
+    ]);
+});
+
+// Rutas con métodos HTTP específicos
+$router->post('/api/users', 'UserController@store');
+$router->put('/api/users/{id}', 'UserController@update');
+$router->delete('/api/users/{id}', 'UserController@destroy');
+
+$router->run();
+```
+
+## Route Patterns
+
+Los patrones de ruta definen qué URLs coincidirán con cada ruta. Pueden ser estáticos o dinámicos:
+
+### Patrones Estáticos
+
+Los patrones estáticos coinciden exactamente con la URL solicitada:
+
+```php
+$router->get('/about', function() {
+    echo 'Página Acerca de';
+});
+
+$router->get('/contact', function() {
+    echo 'Página de Contacto';
+});
+
+$router->get('/blog/latest', function() {
+    echo 'Últimas entradas del blog';
 });
 ```
 
+### Patrones Dinámicos con Placeholders
 
-## A note on making HEAD requests
+Usa placeholders entre llaves `{}` para capturar segmentos variables de la URL:
 
-When making `HEAD` requests all output will be buffered to prevent any content trickling into the response body, as defined in [RFC2616 (Hypertext Transfer Protocol -- HTTP/1.1)](http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.4):
+```php
+// Capturar un ID de usuario
+$router->get('/users/{id}', function($id) {
+    echo "Usuario ID: " . $id;
+});
 
-> The HEAD method is identical to GET except that the server MUST NOT return a message-body in the response. The metainformation contained in the HTTP headers in response to a HEAD request SHOULD be identical to the information sent in response to a GET request. This method can be used for obtaining metainformation about the entity implied by the request without transferring the entity-body itself. This method is often used for testing hypertext links for validity, accessibility, and recent modification.
+// Capturar múltiples parámetros
+$router->get('/users/{userId}/posts/{postId}', function($userId, $postId) {
+    echo "Usuario: $userId, Post: $postId";
+});
 
-To achieve this, `bramus/router` but will internally re-route `HEAD` requests to their equivalent `GET` request and automatically suppress all output.
+// Parámetros opcionales con valores por defecto
+$router->get('/blog/{year?}', function($year = null) {
+    if ($year) {
+        echo "Posts del año: " . $year;
+    } else {
+        echo "Todos los posts";
+    }
+});
+```
 
+### Patrones Dinámicos con Expresiones Regulares (PCRE)
 
-## Acknowledgements
+Para mayor control, puedes usar expresiones regulares:
 
-`bramus/router` is inspired upon [Klein](https://github.com/chriso/klein.php), [Ham](https://github.com/radiosilence/Ham), and [JREAM/route](https://bitbucket.org/JREAM/route) . Whilst Klein provides lots of features it is not object oriented. Whilst Ham is Object Oriented, it's bad at _separation of concerns_ as it also provides templating within the routing class. Whilst JREAM/route is a good starting point it is limited in what it does (only GET routes for example).
+```php
+// Solo números (uno o más dígitos)
+$router->get('/users/(\d+)', function($id) {
+    echo "Usuario ID: " . $id;
+});
 
+// Solo letras y números
+$router->get('/profile/(\w+)', function($username) {
+    echo "Perfil de: " . $username;
+});
 
+// Patrón más específico: exactamente 4 dígitos para el año
+$router->get('/blog/(\d{4})', function($year) {
+    echo "Posts del año: " . $year;
+});
 
-## License
+// Múltiples patrones
+$router->get('/blog/(\d{4})/(\d{2})', function($year, $month) {
+    echo "Posts de $month/$year";
+});
+```
 
-`bramus/router` is released under the MIT public license. See the enclosed `LICENSE` for details.
+### Patrones Opcionales
+
+Puedes hacer partes de la ruta opcionales usando `?`:
+
+```php
+// Blog con parámetros opcionales sucesivos
+$router->get('/blog(/(\d{4})(/(\d{2})(/(\d{2}))?)?)?', function($year = null, $month = null, $day = null) {
+    if (!$year) {
+        echo 'Vista general del blog';
+        return;
+    }
+    if (!$month) {
+        echo "Posts del año $year";
+        return;
+    }
+    if (!$day) {
+        echo "Posts de $month/$year";
+        return;
+    }
+    echo "Posts del $day/$month/$year";
+});
+```
+
+### Comodines
+
+Para capturar cualquier cosa:
+
+```php
+// Capturar todo lo que viene después
+$router->get('/files/(.*)', function($path) {
+    echo "Ruta del archivo: " . $path;
+});
+
+// Capturar segmento que no contenga barras
+$router->get('/category/([^/]+)', function($category) {
+    echo "Categoría: " . $category;
+});
+```
+
+## Ejemplos Prácticos
+
+### Aplicación REST API Básica
+
+```php
+<?php
+require_once 'vendor/autoload.php';
+
+use Router\Router;
+
+$router = Router::create();
+
+// Configurar para API JSON
+header('Content-Type: application/json');
+
+// Middleware para validar API key
+$router->before('GET|POST|PUT|DELETE', '/api/.*', function() {
+    $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+    if ($apiKey !== 'mi-api-key-secreta') {
+        http_response_code(401);
+        echo json_encode(['error' => 'API key requerida']);
+        exit();
+    }
+});
+
+// Montar rutas de API
+$router->mount('/api/v1', function() use ($router) {
+
+    // Usuarios
+    $router->get('/users', function() {
+        echo json_encode(['users' => getUserList()]);
+    });
+
+    $router->get('/users/{id}', function($id) {
+        $user = getUser($id);
+        if (!$user) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Usuario no encontrado']);
+            return;
+        }
+        echo json_encode(['user' => $user]);
+    });
+
+    $router->post('/users', function() {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $user = createUser($data);
+        http_response_code(201);
+        echo json_encode(['user' => $user]);
+    });
+
+    $router->put('/users/{id}', function($id) {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $user = updateUser($id, $data);
+        echo json_encode(['user' => $user]);
+    });
+
+    $router->delete('/users/{id}', function($id) {
+        deleteUser($id);
+        http_response_code(204);
+    });
+});
+
+$router->run();
+```
+
+### Uso con Clases Controladoras
+
+```php
+<?php
+require_once 'vendor/autoload.php';
+
+use Router\Router;
+
+$router = Router::create();
+
+// Establecer namespace para controladores
+$router->setNamespace('App\\Controllers');
+
+// Rutas usando controladores
+$router->get('/', 'HomeController@index');
+$router->get('/about', 'PageController@about');
+
+// Rutas de usuario
+$router->mount('/users', function() use ($router) {
+    $router->get('/', 'UserController@index');
+    $router->get('/{id}', 'UserController@show');
+    $router->post('/', 'UserController@store');
+    $router->put('/{id}', 'UserController@update');
+    $router->delete('/{id}', 'UserController@destroy');
+});
+
+// Área administrativa con middleware
+$router->before('GET|POST|PUT|DELETE', '/admin/.*', 'AuthController@requireAdmin');
+
+$router->mount('/admin', function() use ($router) {
+    $router->get('/dashboard', 'Admin\\DashboardController@index');
+    $router->get('/users', 'Admin\\UserController@index');
+    $router->get('/settings', 'Admin\\SettingsController@index');
+});
+
+$router->run();
+```
+
+## Características Avanzadas
+
+### Soporte para Subfolders
+
+El router automáticamente detecta si está ejecutándose en un subfolder y ajusta las rutas:
+
+```php
+// Si tu app está en: https://example.com/mi-app/
+// El router automáticamente prefijará todas las rutas con /mi-app
+
+$router->get('/', function() {
+    // Responderá a: https://example.com/mi-app/
+});
+
+$router->get('/users', function() {
+    // Responderá a: https://example.com/mi-app/users
+});
+```
+
+### Override del Método HTTP
+
+Soporta `X-HTTP-Method-Override` para simular métodos PUT, DELETE, etc. desde formularios HTML:
+
+```html
+<!-- Formulario HTML -->
+<form method="POST" action="/users/123">
+  <input type="hidden" name="_method" value="DELETE" />
+  <!-- Será tratado como DELETE /users/123 -->
+</form>
+```
+
+### Parámetros de Consulta y POST Data
+
+```php
+$router->post('/users', function() {
+    // Datos POST
+    $name = $_POST['name'] ?? '';
+    $email = $_POST['email'] ?? '';
+
+    // Parámetros de consulta
+    $sort = $_GET['sort'] ?? 'name';
+
+    // JSON data
+    $json = json_decode(file_get_contents('php://input'), true);
+
+    // Crear usuario...
+});
+```
+
+## Licencia
+
+MIT License - ver archivo LICENSE para más detalles.
+
+## Créditos
+
+- **Librería original**: [bramus/router](https://github.com/bramus/router) por Bram(us) Van Damme
+- **Esta implementación**: Desarrollada independientemente basándose en los conceptos originales

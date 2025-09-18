@@ -1,15 +1,14 @@
 {
-    "name": "bramus/router",
-    "description": "A lightweight and simple object oriented PHP Router",
+    "name": "beresiartejuan/router",
+    "description": "A lightweight and simple object oriented PHP Router (based on bramus/router)",
     "keywords": ["router", "routing"],
-    "homepage": "https://github.com/bramus/router",
+    "homepage": "https://github.com/beresiartejuan/router",
     "type": "library",
     "license": "MIT",
     "authors": [
         {
-            "name": "Bram(us) Van Damme",
-            "email": "bramus@bram.us",
-            "homepage": "http://www.bram.us"
+            "name": "Juan Beresiarte",
+            "email": "your-email@example.com"
         }
     ],
     "require": {
@@ -21,7 +20,7 @@
         "friendsofphp/php-cs-fixer": "~2.14"
     },
     "autoload": {
-        "psr-0": {"Bramus": "src/"}
+        "psr-4": {"Router\\": "src/"}
     },
     "scripts": {
         "test": "./vendor/bin/phpunit --colors=always",
